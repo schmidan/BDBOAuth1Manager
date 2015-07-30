@@ -26,7 +26,7 @@
 #import "TweetCell.h"
 #import "TweetsViewController.h"
 
-#import "AFNetworking/UIKit+AFNetworking.h"
+#import "UIKit+AFNetworking.h"
 #import "BBlock/UIKit+BBlock.h"
 
 

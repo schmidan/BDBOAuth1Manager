@@ -338,6 +338,8 @@ static NSDictionary *OAuthKeychainDictionaryForService(NSString *service) {
 
     NSString *requestString = [NSString stringWithFormat:@"%@&%@&%@", requestMethod, requestURL, queryString];
     NSData *requestData = [requestString dataUsingEncoding:NSUTF8StringEncoding];
+    
+    NSLog(@" request string going to HMAC:\n%@",requestString);
 
     uint8_t digest[CC_SHA1_DIGEST_LENGTH];
     CCHmacContext context;
@@ -352,7 +354,7 @@ static NSDictionary *OAuthKeychainDictionaryForService(NSString *service) {
 #endif
 }
 
-- (NSString *)OAuthAuthorizationHeaderForMethod:(NSString *)method
+- (NSDictionary *)OAuthAuthorizationDictionaryForMethod:(NSString *)method
                                       URLString:(NSString *)URLString
                                      parameters:(NSDictionary *)parameters
                                           error:(NSError *__autoreleasing *)error {
@@ -391,20 +393,27 @@ static NSDictionary *OAuthKeychainDictionaryForService(NSString *service) {
                                                                                           parameters:mutableParameters
                                                                                                error:error];
 
-    NSArray *sortedComponents = [[[mutableAuthorizationParameters bdb_queryStringRepresentation] componentsSeparatedByString:@"&"] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
+    return mutableAuthorizationParameters;
+}
 
+-(NSString*)OAuthAuthorizationHeaderForDictionary:(NSDictionary*)headerDict{
+    
+    
+    NSArray *sortedComponents = [[[headerDict bdb_queryStringRepresentation] componentsSeparatedByString:@"&"] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
+    
     NSMutableArray *mutableComponents = [NSMutableArray array];
-
+    
     for (NSString *component in sortedComponents) {
         NSArray *subcomponents = [component componentsSeparatedByString:@"="];
-
+        
         if ([subcomponents count] == 2) {
             [mutableComponents addObject:[NSString stringWithFormat:@"%@=\"%@\"", subcomponents[0], subcomponents[1]]];
         }
     }
-
+    
     return [NSString stringWithFormat:@"OAuth %@", [mutableComponents componentsJoinedByString:@", "]];
 }
+
 
 #pragma mark URL Requests
 - (NSMutableURLRequest *)requestWithMethod:(NSString *)method
@@ -415,29 +424,39 @@ static NSDictionary *OAuthKeychainDictionaryForService(NSString *service) {
 
     for (NSString *key in parameters) {
         if ([key hasPrefix:@"oauth_"]) {
+//        if([key hasPrefix:@"oauth_callback"]){
             [mutableParameters removeObjectForKey:key];
         }
     }
 
+    // Only use parameters in the request entity body (with a content-type of `application/x-www-form-urlencoded`).
+    // See RFC 5849, Section 3.4.1.3.1 http://tools.ietf.org/html/rfc5849#section-3.4
+    NSDictionary *authorizationParameters = parameters;
+    NSDictionary *requestParameters = parameters;
+    if (![self.HTTPMethodsEncodingParametersInURI containsObject:method.uppercaseString]) {
+        if (![[self valueForHTTPHeaderField:@"Content-Type"] hasPrefix:@"application/x-www-form-urlencoded"]) {
+            parameters = nil;
+        }
+    }
+    
+    NSDictionary *authHeaderdict = [self OAuthAuthorizationDictionaryForMethod:method
+                                                                     URLString:URLString
+                                                                    parameters:authorizationParameters
+                                                                         error:error];
+    
+    NSString *authHeaderString = [self OAuthAuthorizationHeaderForDictionary:authHeaderdict];
+    
+    [mutableParameters addEntriesFromDictionary:authHeaderdict];
+    [mutableParameters addEntriesFromDictionary:requestParameters]; //oauth_redirect sonst verloren
     NSMutableURLRequest *request = [super requestWithMethod:method
                                                   URLString:URLString
                                                  parameters:mutableParameters
                                                       error:error];
 
-    // Only use parameters in the request entity body (with a content-type of `application/x-www-form-urlencoded`).
-    // See RFC 5849, Section 3.4.1.3.1 http://tools.ietf.org/html/rfc5849#section-3.4
-    NSDictionary *authorizationParameters = parameters;
-
-    if (![self.HTTPMethodsEncodingParametersInURI containsObject:method.uppercaseString]) {
-        if (![[request valueForHTTPHeaderField:@"Content-Type"] hasPrefix:@"application/x-www-form-urlencoded"]) {
-            authorizationParameters = nil;
-        }
-    }
-
-    [request setValue:[self OAuthAuthorizationHeaderForMethod:method
-                                                    URLString:URLString
-                                                   parameters:authorizationParameters
-                                                        error:error] forHTTPHeaderField:@"Authorization"];
+    
+    [request setValue:authHeaderString forHTTPHeaderField:@"Authorization"];
+    
+    
     [request setHTTPShouldHandleCookies:NO];
 
     return request;
