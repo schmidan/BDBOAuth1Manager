@@ -1,7 +1,7 @@
 //
 //  BDBOAuth1SessionManager.h
 //
-//  Copyright (c) 2013-2014 Bradley David Bergeron
+//  Copyright (c) 2013-2015 Bradley David Bergeron
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of
 //  this software and associated documentation files (the "Software"), to deal in
@@ -20,10 +20,9 @@
 //  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 //  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#import "AFHTTPSessionManager.h"
-#import "BDBOAuth1RequestSerializer.h"
+#import <AFNetworking/AFHTTPSessionManager.h>
 
-#if (defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000) || (defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
+#import "BDBOAuth1RequestSerializer.h"
 
 #pragma mark -
 @interface BDBOAuth1SessionManager : AFHTTPSessionManager
@@ -116,5 +115,3 @@
                          failure:(void (^)(NSError *error))failure;
 
 @end
-
-#endif

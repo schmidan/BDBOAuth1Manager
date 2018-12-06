@@ -20,7 +20,6 @@
 //  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 //  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#import "BDBOAuth1RequestOperationManager.h"
 #import "BDBOAuth1SessionManager.h"
 #import "BDBTweet.h"
 #import "BDBTwitterClient.h"
@@ -39,18 +38,14 @@ static NSString * const kBDBTwitterClientAPIURL   = @"https://api.twitter.com/1.
 
 static NSString * const kBDBTwitterClientOAuthAuthorizeURL     = @"https://api.twitter.com/oauth/authorize";
 static NSString * const kBDBTwitterClientOAuthCallbackURL      = @"bdboauth1demo-twitter://authorize";
-static NSString * const kBDBTwitterClientOAuthRequestTokenPath = @"/oauth/request_token";
-static NSString * const kBDBTwitterClientOAuthAccessTokenPath  = @"/oauth/access_token";
+static NSString * const kBDBTwitterClientOAuthRequestTokenPath = @"https://api.twitter.com/oauth/request_token";
+static NSString * const kBDBTwitterClientOAuthAccessTokenPath  = @"https://api.twitter.com/oauth/access_token";
 
 
 #pragma mark -
 @interface BDBTwitterClient ()
 
-#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000
 @property (nonatomic) BDBOAuth1SessionManager *networkManager;
-#else
-@property (nonatomic) BDBOAuth1RequestOperationManager *networkManager;
-#endif
 
 - (id)initWithConsumerKey:(NSString *)key sceret:(NSString *)secret;
 
@@ -76,12 +71,7 @@ static BDBTwitterClient *_sharedClient = nil;
 
     if (self) {
         NSURL *baseURL = [NSURL URLWithString:kBDBTwitterClientAPIURL];
-
-#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000
         _networkManager = [[BDBOAuth1SessionManager alloc] initWithBaseURL:baseURL consumerKey:key consumerSecret:secret];
-#else
-        _networkManager = [[BDBOAuth1RequestOperationManager alloc] initWithBaseURL:baseURL consumerKey:key consumerSecret:secret];
-#endif
     }
 
     return self;
@@ -168,25 +158,15 @@ static BDBTwitterClient *_sharedClient = nil;
 - (void)loadTimelineWithCompletion:(void (^)(NSArray *, NSError *))completion {
     static NSString *timelinePath = @"statuses/home_timeline.json?count=100";
 
-#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000
     [self.networkManager GET:timelinePath
                   parameters:nil
+                    progress:nil
                      success:^(NSURLSessionDataTask *task, id responseObject) {
                          [self parseTweetsFromAPIResponse:responseObject completion:completion];
                      }
                      failure:^(NSURLSessionDataTask *task, NSError *error) {
                          completion(nil, error);
                      }];
-#else
-    [self.networkManager GET:timelinePath
-                  parameters:nil
-                     success:^(AFHTTPRequestOperation *operation, id responseObject) {
-                         [self parseTweetsFromAPIResponse:responseObject completion:completion];
-                     }
-                     failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-                         completion(nil, error);
-                     }];
-#endif
 }
 
 - (void)parseTweetsFromAPIResponse:(id)responseObject completion:(void (^)(NSArray *, NSError *))completion {

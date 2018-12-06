@@ -23,17 +23,9 @@
 #import "BDBFlickrClient.h"
 #import "BDBFlickrPhoto.h"
 #import "BDBFlickrPhotoset.h"
-#import "BDBOAuth1RequestOperationManager.h"
 #import "BDBOAuth1SessionManager.h"
 
 #import "NSDictionary+BDBOAuth1Manager.h"
-
-
-#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 70000
-#define USE_NSURLSESSION true
-#else
-#define USE_NSURLSESSION false
-#endif
 
 
 // Exported
@@ -47,8 +39,8 @@ static NSString * const kBDBFlickrClientAPIURL   = @"https://api.flickr.com/serv
 
 static NSString * const kBDBFlickrClientOAuthAuthorizeURL     = @"https://www.flickr.com/services/oauth/authorize";
 static NSString * const kBDBFlickrClientOAuthCallbackURL      = @"bdboauth1demo-flickr://authorize";
-static NSString * const kBDBFlickrClientOAuthRequestTokenPath = @"oauth/request_token";
-static NSString * const kBDBFlickrClientOAuthAccessTokenPath  = @"oauth/access_token";
+static NSString * const kBDBFlickrClientOAuthRequestTokenPath = @"https://www.flickr.com/services/oauth/request_token";
+static NSString * const kBDBFlickrClientOAuthAccessTokenPath  = @"https://www.flickr.com/services/oauth/access_token";
 
 
 #pragma mark -
@@ -56,11 +48,7 @@ static NSString * const kBDBFlickrClientOAuthAccessTokenPath  = @"oauth/access_t
 
 @property (nonatomic, copy) NSString *apiKey;
 
-#if USE_NSURLSESSION
 @property (nonatomic) BDBOAuth1SessionManager *networkManager;
-#else
-@property (nonatomic) BDBOAuth1RequestOperationManager *networkManager;
-#endif
 
 - (id)initWithAPIKey:(NSString *)apiKey sceret:(NSString *)secret;
 
@@ -90,12 +78,7 @@ static BDBFlickrClient *_sharedClient = nil;
         _apiKey = [apiKey copy];
 
         NSURL *baseURL = [NSURL URLWithString:kBDBFlickrClientAPIURL];
-
-#if USE_NSURLSESSION
         _networkManager = [[BDBOAuth1SessionManager alloc] initWithBaseURL:baseURL consumerKey:apiKey consumerSecret:secret];
-#else
-        _networkManager = [[BDBOAuth1RequestOperationManager alloc] initWithBaseURL:baseURL consumerKey:apiKey consumerSecret:secret];
-#endif
     }
 
     return self;
@@ -194,19 +177,11 @@ static BDBFlickrClient *_sharedClient = nil;
 
     static NSString *path = @"rest";
 
-#if USE_NSURLSESSION
-    [self.networkManager GET:path parameters:params success:^(NSURLSessionDataTask *task, id responseObject) {
+    [self.networkManager GET:path parameters:params progress:nil success:^(NSURLSessionDataTask *task, id responseObject) {
         [self parsePhotosetsFromAPIResponseObject:responseObject completion:completion];
     } failure:^(NSURLSessionDataTask *task, NSError *error) {
         completion(nil, error);
     }];
-#else
-    [self.networkManager GET:path parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        [self parsePhotosetsFromAPIResponseObject:responseObject completion:completion];
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        completion(nil, error);
-    }];
-#endif
 }
 
 - (void)parsePhotosetsFromAPIResponseObject:(id)responseObject completion:(void (^)(NSSet *, NSError *))completion {
@@ -250,19 +225,11 @@ static BDBFlickrClient *_sharedClient = nil;
 
     static NSString *path = @"rest";
 
-#if USE_NSURLSESSION
-    [self.networkManager GET:path parameters:params success:^(NSURLSessionDataTask *task, id responseObject) {
+    [self.networkManager GET:path parameters:params progress:nil success:^(NSURLSessionDataTask *task, id responseObject) {
         [self parsePhotosFromAPIResponseObject:responseObject completion:completion];
     } failure:^(NSURLSessionDataTask *task, NSError *error) {
         completion(nil, error);
     }];
-#else
-    [self.networkManager GET:path parameters:params success:^(AFHTTPRequestOperation *operation, id responseObject) {
-        [self parsePhotosFromAPIResponseObject:responseObject completion:completion];
-    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-        completion(nil, error);
-    }];
-#endif
 }
 
 - (void)parsePhotosFromAPIResponseObject:(id)responseObject completion:(void (^)(NSArray *, NSError *))completion {
